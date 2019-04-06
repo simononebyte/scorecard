@@ -1,0 +1,22 @@
+{
+    "rmm_key": "rmm api key",
+    "psa_key": {
+        "company": "psa company",
+        "public": "psa public key",
+        "private": "ps private key"
+    },
+    "psa_excludes": {
+        "summary": [
+            "^BDR Low Disk",
+            "^BDR Virtualization",
+            "^Server reboot pending after patch installation at site",
+            "^Network Issue: A Firmware Changed"
+        ]
+    },
+    "reactive_endpoints": [
+        {
+            "name": "True Methods Reactive Cleint",
+            "site_code": "rmm site code"
+        }
+    ]
+}
