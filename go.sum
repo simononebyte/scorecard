@@ -14,6 +14,10 @@ github.com/mitchellh/mapstructure v1.1.2/go.mod h1:FVVH3fgwuzCH5S8UJGiWEs2h04kUh
 github.com/pelletier/go-toml v1.2.0 h1:T5zMGML61Wp+FlcbWjRDT7yAxhJNAiPPLOFECq181zc=
 github.com/pelletier/go-toml v1.2.0/go.mod h1:5z9KED0ma1S8pY6P1sdut58dfprrGBbd/94hg7ilaic=
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
+github.com/simononebyte/restup v0.0.0-20190406150510-2dca80046c0a h1:tC1YlLEcD3mWDqy+Yfnh4J/waAFzHvsfioKr/k5hbrc=
+github.com/simononebyte/restup v0.0.0-20190406150510-2dca80046c0a/go.mod h1:zFZvTxxskCLJBp2f/ssKoRK3je0lDpG0F4e6XY+ZmZA=
+github.com/simononebyte/restup v0.0.0-20190407071545-ae852b4c8efa h1:axCadgcW/Wdz6Pd6vP5ORWAkdS7A2LuQ2LDgVTGujZQ=
+github.com/simononebyte/restup v0.0.0-20190407071545-ae852b4c8efa/go.mod h1:zFZvTxxskCLJBp2f/ssKoRK3je0lDpG0F4e6XY+ZmZA=
 github.com/spf13/afero v1.1.2 h1:m8/z1t7/fwjysjQRYbP0RD+bUIF/8tJwPdEZsI83ACI=
 github.com/spf13/afero v1.1.2/go.mod h1:j4pytiNVoe2o6bmDsKpLACNPDBIoEAkihy7loJ1B0CQ=
 github.com/spf13/cast v1.3.0 h1:oget//CVOEoFewqQxwr0Ej5yjygnqGkvggSE/gB35Q8=

@@ -7,11 +7,13 @@ import (
 	"regexp"
 	"strings"
 	"time"
+
+	"github.com/simononebyte/restup"
 )
 
 // PSAClient ...
 type PSAClient struct {
-	apiClient     *APIClient
+	restup        *restup.RestUp
 	excludes      []string
 	reactiveSites []psaSite
 }
@@ -25,7 +27,7 @@ type psaSite struct {
 func NewPSAClient(c config) *PSAClient {
 	token := fmt.Sprintf("%s+%s:%s", c.ConnectWise.Company, c.ConnectWise.Username, c.ConnectWise.Password)
 	psa := PSAClient{}
-	psa.apiClient = NewAPICLient(token)
+	psa.restup = restup.NewRestUp("https://api-eu.myconnectwise.net/v4_6_release/apis/3.0/", token)
 	for _, v := range c.ReactiveSites {
 		psa.reactiveSites = append(psa.reactiveSites, psaSite{v.Name, v.SiteCode})
 	}
@@ -158,10 +160,10 @@ func (psa *PSAClient) GetPSATicketsForWeek() ([]PSATicket, error) {
 	fmt.Printf("Filter: %s\n", filter)
 
 	for {
-		url := fmt.Sprintf("https://api-eu.myconnectwise.net/v4_6_release/apis/3.0/service/tickets/search/?pageSize=%d&page=%d", pageSize, currentPage)
+		cmd := fmt.Sprintf("service/tickets/search/?pageSize=%d&page=%d", pageSize, currentPage)
 		page := []PSATicket{}
 
-		if err := psa.apiClient.Post(url, filter, &page); err != nil {
+		if err := psa.restup.Post(cmd, filter, &page); err != nil {
 			return tickets, err
 		}
 		if len(page) == 0 {
@@ -193,30 +195,3 @@ func makePSADateFilter() PSAQuery {
 		Conditions: fmt.Sprintf(filterText, s, e),
 	}
 }
-
-// func doPSAPost(url string, auth PSAAuth, filter string, out interface{}) error {
-
-// 	key := fmt.Sprintf("%s+%s:%s", auth.Company, auth.Username, auth.Password)
-// 	b64key := b64.StdEncoding.EncodeToString([]byte(key))
-// 	q := PSAQuery{
-// 		OrderBy:    "dateEntered",
-// 		Conditions: filter,
-// 	}
-// 	b := new(bytes.Buffer)
-// 	json.NewEncoder(b).Encode(q)
-
-// 	req, reqErr := http.NewRequest(http.MethodPost, url, b)
-// 	if reqErr != nil {
-// 		return reqErr
-// 	}
-
-// 	req.Header.Set("Authorization", fmt.Sprintf("Basic %s", b64key))
-// 	req.Header.Set("Content-Type", "application/json")
-
-// 	doErr := doJSONRequest(req, out)
-// 	if doErr != nil {
-// 		return doErr
-// 	}
-
-// 	return nil
-// }

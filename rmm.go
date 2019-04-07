@@ -3,11 +3,13 @@ package main
 import (
 	"fmt"
 	"os"
+
+	"github.com/simononebyte/restup"
 )
 
 // RMMClient encapsulates the RMM API Client
 type RMMClient struct {
-	apiClient     *APIClient
+	restup        *restup.RestUp
 	reactiveSites []rmmSite
 }
 
@@ -19,7 +21,7 @@ type rmmSite struct {
 // NewRMMClient ...
 func NewRMMClient(c config) *RMMClient {
 	rmm := RMMClient{}
-	rmm.apiClient = NewAPICLient(c.Continuum)
+	rmm.restup = restup.NewRestUp("https://api.itsupport247.net/reporting/v1/", c.Continuum)
 	for _, v := range c.ReactiveSites {
 		rmm.reactiveSites = append(rmm.reactiveSites, rmmSite{v.Name, v.SiteCode})
 	}
@@ -97,10 +99,9 @@ func (rmm *RMMClient) GetRMMStats() RMMStats {
 // GetRMMSites ..
 func (rmm *RMMClient) GetRMMSites() ([]RMMSite, error) {
 
-	url := "https://api.itsupport247.net/reporting/v1/sites"
 	sites := []RMMSite{}
 
-	if err := rmm.apiClient.Get(url, &sites); err != nil {
+	if err := rmm.restup.Get("sites", &sites); err != nil {
 		return sites, err
 	}
 
@@ -110,10 +111,10 @@ func (rmm *RMMClient) GetRMMSites() ([]RMMSite, error) {
 // GetRMMEndpoints ...
 func (rmm *RMMClient) GetRMMEndpoints(siteCode string) ([]RMMDevice, error) {
 
-	url := fmt.Sprintf("https://itsapi.itsupport247.net/reporting/v1/sites/%s/devices/", siteCode)
+	cmd := fmt.Sprintf("sites/%s/devices/", siteCode)
 	devices := []RMMDevice{}
 
-	if err := rmm.apiClient.Get(url, &devices); err != nil {
+	if err := rmm.restup.Get(cmd, &devices); err != nil {
 		return devices, err
 	}
 
@@ -129,22 +130,3 @@ func (rmm *RMMClient) IsTSCSite(site string) bool {
 	}
 	return false
 }
-
-// func doRMMGet(url string, key string, out interface{}) error {
-
-// 	b64key := b64.StdEncoding.EncodeToString([]byte(key))
-
-// 	req, reqErr := http.NewRequest(http.MethodGet, url, nil)
-// 	if reqErr != nil {
-// 		return reqErr
-// 	}
-
-// 	req.Header.Set("Authorization", fmt.Sprintf("Basic %s", b64key))
-
-// 	doErr := doJSONRequest(req, out)
-// 	if doErr != nil {
-// 		return doErr
-// 	}
-
-// 	return nil
-// }
