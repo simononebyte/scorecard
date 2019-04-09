@@ -73,12 +73,12 @@ type PSAQuery struct {
 }
 
 // GetPSAStats ...
-func (psa *PSAClient) GetPSAStats() PSAStats {
+func (psa *PSAClient) GetPSAStats(start, end time.Time) PSAStats {
 
 	stats := PSAStats{}
 
 	fmt.Printf("PSA: Getting Tickets: \n")
-	tickets, ticketsErr := psa.GetPSATicketsForWeek()
+	tickets, ticketsErr := psa.GetPSATicketsForWeek(start, end)
 	if ticketsErr != nil {
 		fmt.Printf("error: \n%s\n", ticketsErr)
 		os.Exit(1)
@@ -150,11 +150,11 @@ func listTickets(tickets []PSATicket) {
 }
 
 // GetPSATicketsForWeek ..
-func (psa *PSAClient) GetPSATicketsForWeek() ([]PSATicket, error) {
+func (psa *PSAClient) GetPSATicketsForWeek(start, end time.Time) ([]PSATicket, error) {
 
 	pageSize := 1000
 	currentPage := 1
-	filter := makePSADateFilter()
+	filter := makePSADateFilter(start, end)
 	tickets := []PSATicket{}
 
 	fmt.Printf("Filter: %s\n", filter)
@@ -177,14 +177,7 @@ func (psa *PSAClient) GetPSATicketsForWeek() ([]PSATicket, error) {
 }
 
 // makePSADateFilter returns the query filter needed by the PSA
-func makePSADateFilter() PSAQuery {
-
-	now := time.Now()
-
-	offset := (int(now.Weekday()) - 1) * -1
-
-	start := now.AddDate(0, 0, (offset + -7))
-	end := now.AddDate(0, 0, offset)
+func makePSADateFilter(start, end time.Time) PSAQuery {
 
 	s := fmt.Sprintf("%d-%d-%d", start.Year(), start.Month(), start.Day())
 	e := fmt.Sprintf("%d-%d-%d", end.Year(), end.Month(), end.Day())
