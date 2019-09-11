@@ -26,6 +26,7 @@ type PSAAuth struct {
 	Company  string `json:"company"`
 	Username string `json:"public"`
 	Password string `json:"private"`
+	ClientID string `json:"client_id"`
 }
 
 // PSAExcludes detail tickets that should be exluded from scorecard

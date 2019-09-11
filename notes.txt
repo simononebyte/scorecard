@@ -22,3 +22,6 @@ Returns
 
 
 
+ConnectWise API now requires a Unique ID for each integration. These can be generated here.
+https://developer.connectwise.com/ClientID
+

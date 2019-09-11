@@ -27,7 +27,9 @@ type psaSite struct {
 func NewPSAClient(c config) *PSAClient {
 	token := fmt.Sprintf("%s+%s:%s", c.ConnectWise.Company, c.ConnectWise.Username, c.ConnectWise.Password)
 	psa := PSAClient{}
-	psa.restup = restup.NewRestUp("https://api-eu.myconnectwise.net/v4_6_release/apis/3.0/", token)
+	psa.restup = restup.NewRestUp("https://api-eu.myconnectwise.net/v2019_4/apis/3.0/", token)
+	psa.restup.AddHeader("clientId", c.ConnectWise.ClientID)
+	fmt.Println("Using clientID", c.ConnectWise.ClientID)
 	for _, v := range c.ReactiveSites {
 		psa.reactiveSites = append(psa.reactiveSites, psaSite{v.Name, v.SiteCode})
 	}
