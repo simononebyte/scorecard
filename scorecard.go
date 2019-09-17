@@ -7,31 +7,20 @@ import (
 	"os"
 	"strconv"
 	"time"
+
+	"github.com/simononebyte/scorecard/psa"
 )
 
 type config struct {
 	Continuum     string       `json:"rmm_key"`
-	ConnectWise   PSAAuth      `json:"psa_key"`
-	Excludes      PSAExcludes  `json:"psa_excludes"`
+	ConnectWise   psa.Config   `json:"psa_key"`
+	Excludes      psa.Excludes `json:"psa_excludes"`
 	ReactiveSites []configSite `json:"reactive_endpoints"`
 }
 
 type configSite struct {
 	Name     string `json:"name"`
 	SiteCode string `json:"site_code"`
-}
-
-// PSAAuth hold the APIP credentials for the PSA system
-type PSAAuth struct {
-	Company  string `json:"company"`
-	Username string `json:"public"`
-	Password string `json:"private"`
-	ClientID string `json:"client_id"`
-}
-
-// PSAExcludes detail tickets that should be exluded from scorecard
-type PSAExcludes struct {
-	Summary []string `json:"summary"`
 }
 
 func main() {
@@ -63,10 +52,21 @@ func main() {
 	fmt.Printf("Gettings stats from Monday %v to Sunday %v", start, end)
 
 	rmm := NewRMMClient(c)
-	psa := NewPSAClient(c)
+
+	siteCodes := make([]string, 0)
+	for _, v := range c.ReactiveSites {
+		siteCodes = append(siteCodes, string(v.SiteCode))
+	}
+
+	excludes := make([]string, 0)
+	for _, exclude := range c.Excludes.Summary {
+		excludes = append(excludes, exclude)
+	}
+
+	psa := psa.NewClient(c.ConnectWise, siteCodes, excludes)
 
 	rmmStats := rmm.GetRMMStats()
-	psaStats := psa.GetPSAStats(start, end)
+	psaStats := psa.GetStats(start, end)
 
 	mrrRte := float64(psaStats.MRRTickets) / float64(rmmStats.TSCDevices)
 	orrRte := float64(psaStats.ORRTickets) / float64(rmmStats.OtherDevices)
