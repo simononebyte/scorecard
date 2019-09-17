@@ -25,6 +25,64 @@ type configSite struct {
 
 func main() {
 
+	c, configErr := readConfig()
+	if configErr != nil {
+		fmt.Printf("error reading config: \n%s\n", configErr)
+		os.Exit(1)
+	}
+
+	siteCodes := make([]string, 0)
+	for _, v := range c.ReactiveSites {
+		siteCodes = append(siteCodes, string(v.SiteCode))
+	}
+
+	excludes := make([]string, 0)
+	for _, exclude := range c.Excludes.Summary {
+		excludes = append(excludes, exclude)
+	}
+
+	psa := psa.NewClient(c.ConnectWise, siteCodes, excludes)
+
+	boards := []string{
+		"Accounts",
+		"Purchasing",
+		"SD - Reactive",
+		"SD - Reactive - Helpdesk",
+		"SD - Reactive - Phones",
+	}
+
+	printOpenTicketCounts(psa, boards)
+	// tickets, terr := psa.Boards.GetOpenTickets("SD - Reactive")
+	// if terr != nil {
+	// 	panic(terr)
+	// }
+	// fmt.Println(tickets)
+}
+
+func printOpenTicketCounts(psa *psa.Client, boards []string) {
+	max := 0
+	for _, board := range boards {
+		if len(board) > max {
+			max = len(board)
+		}
+	}
+	fmtStr := " %-" + strconv.Itoa(max) + "s : %3s\n"
+	fmt.Println(fmtStr)
+	fmt.Println("Open tickets by service board")
+	fmt.Println("")
+	for _, board := range boards {
+		tickets, err := psa.Boards.GetOpenTickets(board)
+		if err != nil {
+			fmt.Printf(fmtStr, board, "Board not found")
+			continue
+		}
+		fmt.Printf(fmtStr, board, strconv.Itoa(len(tickets)))
+	}
+	fmt.Println("")
+}
+
+func scoreCard1() {
+
 	args := os.Args[1:]
 	var week int
 

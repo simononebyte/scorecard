@@ -24,6 +24,8 @@ type Client struct {
 	restup        *restup.RestUp
 	excludes      []string
 	reactiveSites []string
+	Boards        *Boards
+	Tickets       *Tickets
 }
 
 // SiteTickets string = siteCode and int = ticket count
@@ -35,17 +37,31 @@ type Stats struct {
 	ORRTickets int
 }
 
+// OrderBy ..
+type OrderBy string
+
+const (
+	// OrderByAsc sorts queries in ascending order
+	OrderByAsc OrderBy = "asc"
+	// OrderByDesc sorts queries in descending order
+	OrderByDesc OrderBy = "desc"
+)
+
 // NewClient ...
 func NewClient(c Config, reactiveSiteCodes []string, excludedSummaries []string) *Client {
 	token := fmt.Sprintf("%s+%s:%s", c.Company, c.Username, c.Password)
-	psa := Client{}
-	psa.restup = restup.NewRestUp("https://api-eu.myconnectwise.net/v2019_4/apis/3.0/", token)
-	psa.restup.AddHeader("clientId", c.ClientID)
 
-	psa.reactiveSites = reactiveSiteCodes
-	psa.excludes = excludedSummaries
+	client := &Client{}
+	client.restup = restup.NewRestUp("https://api-eu.myconnectwise.net/v2019_4/apis/3.0/", token)
+	client.restup.AddHeader("clientId", c.ClientID)
 
-	return &psa
+	client.reactiveSites = reactiveSiteCodes
+	client.excludes = excludedSummaries
+
+	client.Boards = NewBoards(client)
+	client.Tickets = NewTickets(client)
+
+	return client
 }
 
 // GetStats ...
@@ -136,7 +152,7 @@ func (client *Client) GetTicketsForWeek(start, end time.Time) ([]Ticket, error) 
 	fmt.Printf("Filter: %s\n", filter)
 
 	for {
-		cmd := fmt.Sprintf("service/tickets/search/?pageSize=%d&page=%d", pageSize, currentPage)
+		cmd := fmt.Sprintf("service/tickets/search/?orderBy=%s&pageSize=%d&page=%d", OrderByAsc, pageSize, currentPage)
 		page := []Ticket{}
 
 		if err := client.restup.Post(cmd, filter, &page); err != nil {
@@ -163,4 +179,52 @@ func makePSADateFilter(start, end time.Time) Query {
 		OrderBy:    "dateEntered",
 		Conditions: fmt.Sprintf(filterText, s, e),
 	}
+}
+
+// runTicketCommand ..
+func (client *Client) runTicketCommand(cmd string, query Query) ([]Ticket, error) {
+
+	pageSize := 1000
+	currentPage := 1
+	tickets := []Ticket{}
+
+	for {
+		cmd = fmt.Sprintf("service/tickets/search/?pageSize=%d&page=%d", pageSize, currentPage)
+		page := []Ticket{}
+
+		if err := client.restup.Post(cmd, query, &page); err != nil {
+			return []Ticket{}, err
+		}
+		if len(page) == 0 {
+			break
+		}
+		tickets = append(tickets, page...)
+		currentPage++
+	}
+
+	return tickets, nil
+}
+
+// getCommand runs a getCommand
+func (client *Client) getCommand(cmd string, orderBy OrderBy) ([]Ticket, error) {
+
+	pageSize := 1000
+	currentPage := 1
+	tickets := []Ticket{}
+
+	for {
+		cmd = fmt.Sprintf("service/tickets/search/?pageSize=%d&page=%d", pageSize, currentPage)
+		page := []Ticket{}
+
+		if err := client.restup.Get(cmd, &page); err != nil {
+			return []Ticket{}, err
+		}
+		if len(page) == 0 {
+			break
+		}
+		tickets = append(tickets, page...)
+		currentPage++
+	}
+
+	return tickets, nil
 }
