@@ -52,6 +52,8 @@ func main() {
 	}
 
 	printOpenTicketCounts(psa, boards)
+	printOpenTicketsOlderThanDays(psa, boards, 7)
+	printOpenTicketsOlderThanDays(psa, boards, 31)
 	// tickets, terr := psa.Boards.GetOpenTickets("SD - Reactive")
 	// if terr != nil {
 	// 	panic(terr)
@@ -67,11 +69,34 @@ func printOpenTicketCounts(psa *psa.Client, boards []string) {
 		}
 	}
 	fmtStr := " %-" + strconv.Itoa(max) + "s : %3s\n"
-	fmt.Println(fmtStr)
+
 	fmt.Println("Open tickets by service board")
 	fmt.Println("")
 	for _, board := range boards {
 		tickets, err := psa.Boards.GetOpenTickets(board)
+		if err != nil {
+			fmt.Printf(fmtStr, board, "Board not found")
+			continue
+		}
+		fmt.Printf(fmtStr, board, strconv.Itoa(len(tickets)))
+	}
+	fmt.Println("")
+}
+
+func printOpenTicketsOlderThanDays(psa *psa.Client, boards []string, days int) {
+
+	fmt.Printf("Open tickets by service board open more than %d days\n\n", days)
+
+	max := 0
+	for _, board := range boards {
+		if len(board) > max {
+			max = len(board)
+		}
+	}
+	fmtStr := " %-" + strconv.Itoa(max) + "s : %3s\n"
+
+	for _, board := range boards {
+		tickets, err := psa.Boards.GetOpenTicketsOlderThan(board, days)
 		if err != nil {
 			fmt.Printf(fmtStr, board, "Board not found")
 			continue

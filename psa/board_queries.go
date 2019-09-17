@@ -2,6 +2,7 @@ package psa
 
 import (
 	"fmt"
+	"time"
 )
 
 // Boards encapsulates queries run on a specific board
@@ -26,6 +27,24 @@ func (b *Boards) GetBoards() ([]Board, error) {
 	}
 
 	return boards, nil
+}
+
+// GetBoardID get ID for a service board
+func (b *Boards) GetBoardID(boardName string) (int, error) {
+
+	boardCmd := "/service/boards"
+	boards, err := b.getCommand(boardCmd)
+	if err != nil {
+		return -1, err
+	}
+
+	for _, v := range boards {
+		if v.Name == boardName {
+			return v.ID, nil
+		}
+	}
+
+	return -1, fmt.Errorf("error: Unable to find service board %v", boardName)
 }
 
 // GetOpenTickets get the tickets currently in an open state in the specified board
@@ -61,6 +80,32 @@ func (b *Boards) GetOpenTickets(boardName string) ([]Ticket, error) {
 	return tickets, nil
 }
 
+// GetOpenTicketsOlderThan all open tickets older than the specified days
+func (b *Boards) GetOpenTicketsOlderThan(boardName string, days int) ([]Ticket, error) {
+
+	boardID, err := b.GetBoardID(boardName)
+	if err != nil {
+		return []Ticket{}, err
+	}
+	if days > 0 {
+		days = days * -1
+	}
+	date := time.Now().AddDate(0, 0, days)
+	dateStr := fmt.Sprintf("%d-%d-%d", date.Year(), date.Month(), date.Day())
+
+	ticketsCmd := "/service/tickets/search"
+
+	conditions := make(map[string]string)
+	conditions["conditions"] = fmt.Sprintf("ClosedFlag = False AND dateEntered < [%v] AND Board/ID = %v", dateStr, boardID)
+
+	tickets, err := b.client.Tickets.postCommand(ticketsCmd, conditions)
+	if err != nil {
+		return []Ticket{}, err
+	}
+
+	return tickets, nil
+}
+
 // getCommand runs a getCommand
 func (b *Boards) getCommand(cmd string) ([]Board, error) {
 
@@ -73,6 +118,33 @@ func (b *Boards) getCommand(cmd string) ([]Board, error) {
 		page := []Board{}
 
 		if err := b.client.restup.Get(cmd, &page); err != nil {
+			return []Board{}, err
+		}
+		if len(page) == 0 {
+			break
+		}
+		boards = append(boards, page...)
+		if len(page) <= pageSize {
+			break
+		}
+		currentPage++
+	}
+
+	return boards, nil
+}
+
+// postCommand runs a POST API query
+func (b *Boards) postCommand(cmd string, query map[string]string) ([]Board, error) {
+
+	pageSize := 1000
+	currentPage := 1
+	boards := []Board{}
+
+	for {
+		cmd = fmt.Sprintf("%s?pageSize=%d&page=%d", cmd, pageSize, currentPage)
+		page := []Board{}
+
+		if err := b.client.restup.Post(cmd, query, &page); err != nil {
 			return []Board{}, err
 		}
 		if len(page) == 0 {
