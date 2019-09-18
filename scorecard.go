@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -56,6 +57,8 @@ func main() {
 	printOpenAssignedTicketCounts(psa, boards)
 	printOpenNotAssignedTicketCounts(psa, boards)
 
+	fmt.Printf("\n\nPress Enter to close window")
+	bufio.NewReader(os.Stdin).ReadBytes('\n')
 }
 
 func printOpenTicketCounts(psa *psa.Client, boards []string) {
