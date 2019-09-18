@@ -56,6 +56,7 @@ func main() {
 	printOpenTicketsOlderThanDays(psa, boards, 31)
 	printOpenAssignedTicketCounts(psa, boards)
 	printOpenNotAssignedTicketCounts(psa, boards)
+	printOpenTicketsNotUpdatedInOnBoard(psa, boards, 7)
 
 	fmt.Printf("\n\nPress Enter to close window")
 	bufio.NewReader(os.Stdin).ReadBytes('\n')
@@ -96,7 +97,7 @@ func printOpenTicketsOlderThanDays(psa *psa.Client, boards []string, days int) {
 	fmtStr := " %-" + strconv.Itoa(max) + "s : %3s\n"
 
 	for _, board := range boards {
-		tickets, err := psa.GetOpenTicketsObBoardOlderThan(board, days)
+		tickets, err := psa.GetOpenTicketsOnBoardOlderThan(board, days)
 		if err != nil {
 			fmt.Printf(fmtStr, board, "Board not found")
 			continue
@@ -141,6 +142,28 @@ func printOpenNotAssignedTicketCounts(psa *psa.Client, boards []string) {
 	fmt.Println("")
 	for _, board := range boards {
 		tickets, err := psa.GetOpenNotAssignedTicketsOnBoard(board)
+		if err != nil {
+			fmt.Printf(fmtStr, board, "Board not found")
+			continue
+		}
+		fmt.Printf(fmtStr, board, strconv.Itoa(len(tickets)))
+	}
+	fmt.Println("")
+}
+
+func printOpenTicketsNotUpdatedInOnBoard(psa *psa.Client, boards []string, days int) {
+	max := 0
+	for _, board := range boards {
+		if len(board) > max {
+			max = len(board)
+		}
+	}
+	fmtStr := " %-" + strconv.Itoa(max) + "s : %3s\n"
+
+	fmt.Printf("Open tickets not updated in %v days by service board\n", days)
+	fmt.Println("")
+	for _, board := range boards {
+		tickets, err := psa.GetOpenTicketsNotUpdatedInOnBoard(board, days)
 		if err != nil {
 			fmt.Printf(fmtStr, board, "Board not found")
 			continue

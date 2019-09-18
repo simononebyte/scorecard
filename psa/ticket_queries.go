@@ -107,8 +107,8 @@ func (c *Client) GetOpenTicketsOlderThan(days int) ([]Ticket, error) {
 	return tickets, nil
 }
 
-// GetOpenTicketsObBoardOlderThan all open tickets older than the specified dayson a baord
-func (c *Client) GetOpenTicketsObBoardOlderThan(name string, days int) ([]Ticket, error) {
+// GetOpenTicketsOnBoardOlderThan all open tickets older than the specified dayson a baord
+func (c *Client) GetOpenTicketsOnBoardOlderThan(name string, days int) ([]Ticket, error) {
 
 	boardID, err := c.GetBoardID(name)
 	if err != nil {
@@ -156,6 +156,51 @@ func (c *Client) GetOpenNotAssignedTicketsOnBoard(name string) ([]Ticket, error)
 
 	conditions := make(map[string]string)
 	conditions["conditions"] = fmt.Sprintf("ClosedFlag = False AND resources = NULL AND Board/ID = %v", boardID)
+
+	tickets, err := c.postTicketsCommand(ticketSearchEndpoint, conditions)
+	if err != nil {
+		return []Ticket{}, err
+	}
+
+	return tickets, nil
+}
+
+// GetOpenTicketsNotUpdatedIn all open tickets not updtaed in specified number of days
+func (c *Client) GetOpenTicketsNotUpdatedIn(days int) ([]Ticket, error) {
+
+	if days > 0 {
+		days = days * -1
+	}
+	date := time.Now().AddDate(0, 0, days)
+	dateStr := fmt.Sprintf("%d-%d-%d", date.Year(), date.Month(), date.Day())
+
+	conditions := make(map[string]string)
+	conditions["conditions"] = fmt.Sprintf("ClosedFlag = False AND _info/LastUpdated < [%v]", dateStr)
+
+	tickets, err := c.postTicketsCommand(ticketSearchEndpoint, conditions)
+	if err != nil {
+		return []Ticket{}, err
+	}
+
+	return tickets, nil
+}
+
+// GetOpenTicketsNotUpdatedInOnBoard all open tickets not updtaed in specified number of days
+func (c *Client) GetOpenTicketsNotUpdatedInOnBoard(name string, days int) ([]Ticket, error) {
+
+	boardID, err := c.GetBoardID(name)
+	if err != nil {
+		return []Ticket{}, err
+	}
+
+	if days > 0 {
+		days = days * -1
+	}
+	date := time.Now().AddDate(0, 0, days)
+	dateStr := fmt.Sprintf("%d-%d-%d", date.Year(), date.Month(), date.Day())
+
+	conditions := make(map[string]string)
+	conditions["conditions"] = fmt.Sprintf("ClosedFlag = False AND _info/LastUpdated < [%v] AND Board/ID = %v", dateStr, boardID)
 
 	tickets, err := c.postTicketsCommand(ticketSearchEndpoint, conditions)
 	if err != nil {

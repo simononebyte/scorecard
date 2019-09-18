@@ -20,6 +20,24 @@ type Ticket struct {
 	Company     Company   `json:"company"`
 	Board       Board     `json:"board"`
 	Summary     string    `josn:"summary"`
+	Info        Info      `json:"_info"`
+}
+
+// Info ..
+type Info struct {
+	LastUpdated         time.Time `json:"lastUpdated"`
+	UpdatedBy           string    `json:"updatedBy"`
+	DateEntered         time.Time `json:"dateEntered"`
+	EnteredBy           string    `json:"enteredBy"`
+	ActivitiesHRef      string    `json:"activities_href"`
+	ScheduleentriesHRef string    `json:"scheduleentries_href"`
+	DocumentsHRef       string    `json:"documents_href"`
+	ConfigurationsHRef  string    `json:"configurations_href"`
+	TasksHRef           string    `json:"tasks_href"`
+	NotesHRef           string    `json:"notes_href"`
+	ProductsHRef        string    `json:"products_href"`
+	TimeentriesHRef     string    `json:"timeentries_href"`
+	ExpenseEntriesHRef  string    `json:"expenseEntries_href"`
 }
 
 // Company ...
