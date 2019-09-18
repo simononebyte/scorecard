@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -54,11 +53,9 @@ func main() {
 	printOpenTicketCounts(psa, boards)
 	printOpenTicketsOlderThanDays(psa, boards, 7)
 	printOpenTicketsOlderThanDays(psa, boards, 31)
-	// tickets, terr := psa.Boards.GetOpenTickets("SD - Reactive")
-	// if terr != nil {
-	// 	panic(terr)
-	// }
-	// fmt.Println(tickets)
+	printOpenAssignedTicketCounts(psa, boards)
+	printOpenNotAssignedTicketCounts(psa, boards)
+
 }
 
 func printOpenTicketCounts(psa *psa.Client, boards []string) {
@@ -73,7 +70,7 @@ func printOpenTicketCounts(psa *psa.Client, boards []string) {
 	fmt.Println("Open tickets by service board")
 	fmt.Println("")
 	for _, board := range boards {
-		tickets, err := psa.Boards.GetOpenTickets(board)
+		tickets, err := psa.GetOpenTicketsOnBoard(board)
 		if err != nil {
 			fmt.Printf(fmtStr, board, "Board not found")
 			continue
@@ -96,7 +93,7 @@ func printOpenTicketsOlderThanDays(psa *psa.Client, boards []string, days int) {
 	fmtStr := " %-" + strconv.Itoa(max) + "s : %3s\n"
 
 	for _, board := range boards {
-		tickets, err := psa.Boards.GetOpenTicketsOlderThan(board, days)
+		tickets, err := psa.GetOpenTicketsObBoardOlderThan(board, days)
 		if err != nil {
 			fmt.Printf(fmtStr, board, "Board not found")
 			continue
@@ -106,61 +103,105 @@ func printOpenTicketsOlderThanDays(psa *psa.Client, boards []string, days int) {
 	fmt.Println("")
 }
 
-func scoreCard1() {
-
-	args := os.Args[1:]
-	var week int
-
-	switch len(args) {
-	case 0:
-		week = 1
-	case 1:
-		w, err := strconv.Atoi(args[0])
-		if err != nil {
-			usage()
+func printOpenAssignedTicketCounts(psa *psa.Client, boards []string) {
+	max := 0
+	for _, board := range boards {
+		if len(board) > max {
+			max = len(board)
 		}
-		week = w
-	default:
-		usage()
 	}
+	fmtStr := " %-" + strconv.Itoa(max) + "s : %3s\n"
 
-	c, configErr := readConfig()
-
-	if configErr != nil {
-		fmt.Printf("error reading config: \n%s\n", configErr)
-		os.Exit(1)
+	fmt.Println("Open tickets assigned to a resource by service board")
+	fmt.Println("")
+	for _, board := range boards {
+		tickets, err := psa.GetOpenAssignedTicketsOnBoard(board)
+		if err != nil {
+			fmt.Printf(fmtStr, board, "Board not found")
+			continue
+		}
+		fmt.Printf(fmtStr, board, strconv.Itoa(len(tickets)))
 	}
-	start, end := getDateRange(week)
-
-	fmt.Printf("Gettings stats from Monday %v to Sunday %v", start, end)
-
-	rmm := NewRMMClient(c)
-
-	siteCodes := make([]string, 0)
-	for _, v := range c.ReactiveSites {
-		siteCodes = append(siteCodes, string(v.SiteCode))
-	}
-
-	excludes := make([]string, 0)
-	for _, exclude := range c.Excludes.Summary {
-		excludes = append(excludes, exclude)
-	}
-
-	psa := psa.NewClient(c.ConnectWise, siteCodes, excludes)
-
-	rmmStats := rmm.GetRMMStats()
-	psaStats := psa.GetStats(start, end)
-
-	mrrRte := float64(psaStats.MRRTickets) / float64(rmmStats.TSCDevices)
-	orrRte := float64(psaStats.ORRTickets) / float64(rmmStats.OtherDevices)
-
-	fmt.Printf("\nType  - Devices - Tickets - RTE\n")
-	fmt.Printf("Technology success   %3d       %3d       %f\n", rmmStats.TSCDevices, psaStats.MRRTickets, mrrRte)
-	fmt.Printf("Other customers      %3d       %3d       %f\n", rmmStats.OtherDevices, psaStats.ORRTickets, orrRte)
-
-	fmt.Printf("\n\nPress Enter to close window")
-	bufio.NewReader(os.Stdin).ReadBytes('\n')
+	fmt.Println("")
 }
+
+func printOpenNotAssignedTicketCounts(psa *psa.Client, boards []string) {
+	max := 0
+	for _, board := range boards {
+		if len(board) > max {
+			max = len(board)
+		}
+	}
+	fmtStr := " %-" + strconv.Itoa(max) + "s : %3s\n"
+
+	fmt.Println("Open tickets not assigned to a resource by service board")
+	fmt.Println("")
+	for _, board := range boards {
+		tickets, err := psa.GetOpenNotAssignedTicketsOnBoard(board)
+		if err != nil {
+			fmt.Printf(fmtStr, board, "Board not found")
+			continue
+		}
+		fmt.Printf(fmtStr, board, strconv.Itoa(len(tickets)))
+	}
+	fmt.Println("")
+}
+
+// func scoreCard1() {
+
+// 	args := os.Args[1:]
+// 	var week int
+
+// 	switch len(args) {
+// 	case 0:
+// 		week = 1
+// 	case 1:
+// 		w, err := strconv.Atoi(args[0])
+// 		if err != nil {
+// 			usage()
+// 		}
+// 		week = w
+// 	default:
+// 		usage()
+// 	}
+
+// 	c, configErr := readConfig()
+
+// 	if configErr != nil {
+// 		fmt.Printf("error reading config: \n%s\n", configErr)
+// 		os.Exit(1)
+// 	}
+// 	start, end := getDateRange(week)
+
+// 	fmt.Printf("Gettings stats from Monday %v to Sunday %v", start, end)
+
+// 	rmm := NewRMMClient(c)
+
+// 	siteCodes := make([]string, 0)
+// 	for _, v := range c.ReactiveSites {
+// 		siteCodes = append(siteCodes, string(v.SiteCode))
+// 	}
+
+// 	excludes := make([]string, 0)
+// 	for _, exclude := range c.Excludes.Summary {
+// 		excludes = append(excludes, exclude)
+// 	}
+
+// 	psa := psa.NewClient(c.ConnectWise, siteCodes, excludes)
+
+// 	rmmStats := rmm.GetRMMStats()
+// 	psaStats := psa.GetStats(start, end)
+
+// 	mrrRte := float64(psaStats.MRRTickets) / float64(rmmStats.TSCDevices)
+// 	orrRte := float64(psaStats.ORRTickets) / float64(rmmStats.OtherDevices)
+
+// 	fmt.Printf("\nType  - Devices - Tickets - RTE\n")
+// 	fmt.Printf("Technology success   %3d       %3d       %f\n", rmmStats.TSCDevices, psaStats.MRRTickets, mrrRte)
+// 	fmt.Printf("Other customers      %3d       %3d       %f\n", rmmStats.OtherDevices, psaStats.ORRTickets, orrRte)
+
+// 	fmt.Printf("\n\nPress Enter to close window")
+// 	bufio.NewReader(os.Stdin).ReadBytes('\n')
+// }
 
 func usage() {
 	fmt.Println("Displays rective tickets per endpoint per week.")

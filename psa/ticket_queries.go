@@ -5,23 +5,15 @@ import (
 	"time"
 )
 
-// Tickets encapsulates queries run on a specific board
-type Tickets struct {
-	client *Client
-}
-
-// NewTickets returns a new Tickets ready to run queries on
-func NewTickets(client *Client) *Tickets {
-	return &Tickets{
-		client: client,
-	}
-}
+const (
+	ticketsEndpoint      string = "/service/tickets"
+	ticketSearchEndpoint string = "/service/tickets/search"
+)
 
 // GetTickets get the service boards currently active
-func (t *Tickets) GetTickets() ([]Ticket, error) {
+func (c *Client) GetTickets() ([]Ticket, error) {
 
-	ticketsCmd := "/service/tickets"
-	tickets, err := t.getCommand(ticketsCmd)
+	tickets, err := c.getTicketsCommand(ticketsEndpoint)
 	if err != nil {
 		return []Ticket{}, err
 	}
@@ -30,14 +22,64 @@ func (t *Tickets) GetTickets() ([]Ticket, error) {
 }
 
 // GetOpenTickets gets all open tickets
-func (t *Tickets) GetOpenTickets() ([]Ticket, error) {
-
-	ticketsCmd := "/service/tickets/search"
+func (c *Client) GetOpenTickets() ([]Ticket, error) {
 
 	conditions := make(map[string]string)
 	conditions["conditions"] = "ClosedFlag = False"
 
-	tickets, err := t.postCommand(ticketsCmd, conditions)
+	tickets, err := c.postTicketsCommand(ticketSearchEndpoint, conditions)
+	if err != nil {
+		return []Ticket{}, err
+	}
+
+	return tickets, nil
+}
+
+// GetOpenTicketsOnBoard gets all open tickets on a service board
+func (c *Client) GetOpenTicketsOnBoard(name string) ([]Ticket, error) {
+
+	boardID, err := c.GetBoardID(name)
+	if err != nil {
+		return []Ticket{}, err
+	}
+
+	conditions := make(map[string]string)
+	conditions["conditions"] = fmt.Sprintf("ClosedFlag = False AND Board/ID = %v", boardID)
+
+	tickets, err := c.postTicketsCommand(ticketSearchEndpoint, conditions)
+	if err != nil {
+		return []Ticket{}, err
+	}
+
+	return tickets, nil
+}
+
+// GetOpenAssignedTickets gets all open & assigned tickets
+func (c *Client) GetOpenAssignedTickets() ([]Ticket, error) {
+
+	conditions := make(map[string]string)
+	conditions["conditions"] = "ClosedFlag = False AND resources LIKE '*'"
+
+	tickets, err := c.postTicketsCommand(ticketSearchEndpoint, conditions)
+	if err != nil {
+		return []Ticket{}, err
+	}
+
+	return tickets, nil
+}
+
+// GetOpenAssignedTicketsOnBoard gets all open & assigned tickets
+func (c *Client) GetOpenAssignedTicketsOnBoard(name string) ([]Ticket, error) {
+
+	boardID, err := c.GetBoardID(name)
+	if err != nil {
+		return []Ticket{}, err
+	}
+
+	conditions := make(map[string]string)
+	conditions["conditions"] = fmt.Sprintf("ClosedFlag = False AND resources LIKE '*' AND Board/ID = %v", boardID)
+
+	tickets, err := c.postTicketsCommand(ticketSearchEndpoint, conditions)
 	if err != nil {
 		return []Ticket{}, err
 	}
@@ -46,7 +88,7 @@ func (t *Tickets) GetOpenTickets() ([]Ticket, error) {
 }
 
 // GetOpenTicketsOlderThan all open tickets older than the specified days
-func (t *Tickets) GetOpenTicketsOlderThan(days int) ([]Ticket, error) {
+func (c *Client) GetOpenTicketsOlderThan(days int) ([]Ticket, error) {
 
 	if days > 0 {
 		days = days * -1
@@ -54,12 +96,10 @@ func (t *Tickets) GetOpenTicketsOlderThan(days int) ([]Ticket, error) {
 	date := time.Now().AddDate(0, 0, days)
 	dateStr := fmt.Sprintf("%d-%d-%d", date.Year(), date.Month(), date.Day())
 
-	ticketsCmd := "/service/tickets/search"
-
 	conditions := make(map[string]string)
 	conditions["conditions"] = fmt.Sprintf("ClosedFlag = False AND dateEntered < [%v]", dateStr)
 
-	tickets, err := t.postCommand(ticketsCmd, conditions)
+	tickets, err := c.postTicketsCommand(ticketSearchEndpoint, conditions)
 	if err != nil {
 		return []Ticket{}, err
 	}
@@ -67,55 +107,59 @@ func (t *Tickets) GetOpenTicketsOlderThan(days int) ([]Ticket, error) {
 	return tickets, nil
 }
 
-// getCommand runs a getCommand
-func (t *Tickets) getCommand(cmd string) ([]Ticket, error) {
+// GetOpenTicketsObBoardOlderThan all open tickets older than the specified dayson a baord
+func (c *Client) GetOpenTicketsObBoardOlderThan(name string, days int) ([]Ticket, error) {
 
-	pageSize := 1000
-	currentPage := 1
-	tickets := []Ticket{}
+	boardID, err := c.GetBoardID(name)
+	if err != nil {
+		return []Ticket{}, err
+	}
 
-	for {
-		cmd = fmt.Sprintf("%s?pageSize=%d&page=%d", cmd, pageSize, currentPage)
-		page := []Ticket{}
+	if days > 0 {
+		days = days * -1
+	}
+	date := time.Now().AddDate(0, 0, days)
+	dateStr := fmt.Sprintf("%d-%d-%d", date.Year(), date.Month(), date.Day())
 
-		if err := t.client.restup.Get(cmd, &page); err != nil {
-			return []Ticket{}, err
-		}
-		if len(page) == 0 {
-			break
-		}
-		tickets = append(tickets, page...)
-		if len(page) <= pageSize {
-			break
-		}
-		currentPage++
+	conditions := make(map[string]string)
+	conditions["conditions"] = fmt.Sprintf("ClosedFlag = False AND dateEntered < [%v]  AND Board/ID = %v", dateStr, boardID)
+
+	tickets, err := c.postTicketsCommand(ticketSearchEndpoint, conditions)
+	if err != nil {
+		return []Ticket{}, err
 	}
 
 	return tickets, nil
 }
 
-// postCommand runs a POST API query
-func (t *Tickets) postCommand(cmd string, query map[string]string) ([]Ticket, error) {
+// GetOpenNotAssignedTickets gets all open & assigned tickets
+func (c *Client) GetOpenNotAssignedTickets() ([]Ticket, error) {
 
-	pageSize := 1000
-	currentPage := 1
-	tickets := []Ticket{}
+	conditions := make(map[string]string)
+	conditions["conditions"] = fmt.Sprintf("ClosedFlag = False AND resources = NULL")
 
-	for {
-		cmd = fmt.Sprintf("%s?pageSize=%d&page=%d", cmd, pageSize, currentPage)
-		page := []Ticket{}
+	tickets, err := c.postTicketsCommand(ticketSearchEndpoint, conditions)
+	if err != nil {
+		return []Ticket{}, err
+	}
 
-		if err := t.client.restup.Post(cmd, query, &page); err != nil {
-			return []Ticket{}, err
-		}
-		if len(page) == 0 {
-			break
-		}
-		tickets = append(tickets, page...)
-		if len(page) <= pageSize {
-			break
-		}
-		currentPage++
+	return tickets, nil
+}
+
+// GetOpenNotAssignedTicketsOnBoard gets all open & assigned tickets
+func (c *Client) GetOpenNotAssignedTicketsOnBoard(name string) ([]Ticket, error) {
+
+	boardID, err := c.GetBoardID(name)
+	if err != nil {
+		return []Ticket{}, err
+	}
+
+	conditions := make(map[string]string)
+	conditions["conditions"] = fmt.Sprintf("ClosedFlag = False AND resources = NULL AND Board/ID = %v", boardID)
+
+	tickets, err := c.postTicketsCommand(ticketSearchEndpoint, conditions)
+	if err != nil {
+		return []Ticket{}, err
 	}
 
 	return tickets, nil
