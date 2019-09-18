@@ -57,6 +57,7 @@ func main() {
 	printOpenAssignedTicketCounts(psa, boards)
 	printOpenNotAssignedTicketCounts(psa, boards)
 	printOpenTicketsNotUpdatedInOnBoard(psa, boards, 7)
+	printNewTicketsInLastOnBoard(psa, boards, 7)
 
 	fmt.Printf("\n\nPress Enter to close window")
 	bufio.NewReader(os.Stdin).ReadBytes('\n')
@@ -164,6 +165,28 @@ func printOpenTicketsNotUpdatedInOnBoard(psa *psa.Client, boards []string, days 
 	fmt.Println("")
 	for _, board := range boards {
 		tickets, err := psa.GetOpenTicketsNotUpdatedInOnBoard(board, days)
+		if err != nil {
+			fmt.Printf(fmtStr, board, "Board not found")
+			continue
+		}
+		fmt.Printf(fmtStr, board, strconv.Itoa(len(tickets)))
+	}
+	fmt.Println("")
+}
+
+func printNewTicketsInLastOnBoard(psa *psa.Client, boards []string, days int) {
+	max := 0
+	for _, board := range boards {
+		if len(board) > max {
+			max = len(board)
+		}
+	}
+	fmtStr := " %-" + strconv.Itoa(max) + "s : %3s\n"
+
+	fmt.Printf("New tickets in last %v days by service board\n", days)
+	fmt.Println("")
+	for _, board := range boards {
+		tickets, err := psa.GetNewTicketsInLastOnBoard(board, days)
 		if err != nil {
 			fmt.Printf(fmtStr, board, "Board not found")
 			continue

@@ -209,3 +209,48 @@ func (c *Client) GetOpenTicketsNotUpdatedInOnBoard(name string, days int) ([]Tic
 
 	return tickets, nil
 }
+
+// GetNewTicketsInLast all open tickets not updtaed in specified number of days
+func (c *Client) GetNewTicketsInLast(days int) ([]Ticket, error) {
+
+	if days > 0 {
+		days = days * -1
+	}
+	date := time.Now().AddDate(0, 0, days)
+	dateStr := fmt.Sprintf("%d-%d-%d", date.Year(), date.Month(), date.Day())
+
+	conditions := make(map[string]string)
+	conditions["conditions"] = fmt.Sprintf("dateEntered >= [%v]", dateStr)
+
+	tickets, err := c.postTicketsCommand(ticketSearchEndpoint, conditions)
+	if err != nil {
+		return []Ticket{}, err
+	}
+
+	return tickets, nil
+}
+
+// GetNewTicketsInLastOnBoard all open tickets not updtaed in specified number of days
+func (c *Client) GetNewTicketsInLastOnBoard(name string, days int) ([]Ticket, error) {
+
+	boardID, err := c.GetBoardID(name)
+	if err != nil {
+		return []Ticket{}, err
+	}
+
+	if days > 0 {
+		days = days * -1
+	}
+	date := time.Now().AddDate(0, 0, days)
+	dateStr := fmt.Sprintf("%d-%d-%d", date.Year(), date.Month(), date.Day())
+
+	conditions := make(map[string]string)
+	conditions["conditions"] = fmt.Sprintf("dateEntered >= [%v] AND Board/ID = %v", dateStr, boardID)
+
+	tickets, err := c.postTicketsCommand(ticketSearchEndpoint, conditions)
+	if err != nil {
+		return []Ticket{}, err
+	}
+
+	return tickets, nil
+}
