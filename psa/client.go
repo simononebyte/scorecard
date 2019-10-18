@@ -14,6 +14,7 @@ type Config struct {
 	Username string `json:"public"`
 	Password string `json:"private"`
 	ClientID string `json:"client_id"`
+	APIBase  string `json:"api_base"`
 }
 
 // Client ...
@@ -49,7 +50,7 @@ func NewClient(c Config, globalBoardExcludes []string) (*Client, error) {
 	token := fmt.Sprintf("%s+%s:%s", c.Company, c.Username, c.Password)
 
 	client := &Client{}
-	client.restup = restup.NewRestUp("https://api-eu.myconnectwise.net/v2019_5/apis/3.0", token)
+	client.restup = restup.NewRestUp(c.APIBase, token)
 	client.restup.AddHeader("clientId", c.ClientID)
 
 	if len(globalBoardExcludes) > 0 {
