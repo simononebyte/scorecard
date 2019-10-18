@@ -2,6 +2,8 @@ package psa
 
 import (
 	"fmt"
+	"strconv"
+	"time"
 
 	"github.com/simononebyte/restup"
 )
@@ -17,8 +19,7 @@ type Config struct {
 // Client ...
 type Client struct {
 	restup        *restup.RestUp
-	excludes      []string
-	reactiveSites []string
+	excludeBoards []Board
 }
 
 // SiteTickets string = siteCode and int = ticket count
@@ -40,18 +41,57 @@ const (
 	OrderByDesc OrderBy = "desc"
 )
 
-// NewClient ...
-func NewClient(c Config, reactiveSiteCodes []string, excludedSummaries []string) *Client {
+// NewClient creates a new PSA Client.
+//  Config contians the ConnectWise API and Client Keys
+//  globalBoardExcludes is a list of service boards that will be
+//  excluded from all qureies
+func NewClient(c Config, globalBoardExcludes []string) (*Client, error) {
 	token := fmt.Sprintf("%s+%s:%s", c.Company, c.Username, c.Password)
 
 	client := &Client{}
-	client.restup = restup.NewRestUp("https://api-eu.myconnectwise.net/v2019_4/apis/3.0/", token)
+	client.restup = restup.NewRestUp("https://api-eu.myconnectwise.net/v2019_5/apis/3.0", token)
 	client.restup.AddHeader("clientId", c.ClientID)
 
-	client.reactiveSites = reactiveSiteCodes
-	client.excludes = excludedSummaries
+	if len(globalBoardExcludes) > 0 {
+		if err := client.populateExcludes(globalBoardExcludes); err != nil {
+			return &Client{}, err
+		}
+	}
+	return client, nil
+}
 
-	return client
+func (c *Client) populateExcludes(excludes []string) error {
+	boards, err := c.GetBoards()
+	if err != nil {
+		return err
+	}
+	c.excludeBoards = make([]Board, 0)
+	for _, b := range boards {
+		for _, e := range excludes {
+			if b.Name == e {
+				c.excludeBoards = append(c.excludeBoards, b)
+				break
+			}
+		}
+	}
+	if len(excludes) != len(c.excludeBoards) {
+		return fmt.Errorf("not all boards to be excluded were found")
+	}
+	return nil
+}
+
+func newCondition(condition string, a ...interface{}) map[string]string {
+	conditions := make(map[string]string)
+	conditions["conditions"] = fmt.Sprintf(condition, a...)
+	return conditions
+}
+
+func dateStringFromDays(days int) string {
+	if days > 0 {
+		days = days * -1
+	}
+	date := time.Now().AddDate(0, 0, days)
+	return fmt.Sprintf("%d-%d-%d", date.Year(), date.Month(), date.Day())
 }
 
 // getBoardCommand runs a Service Board GET API query
@@ -160,6 +200,94 @@ func (c *Client) postTicketsCommand(cmd string, query map[string]string) ([]Tick
 	}
 
 	return tickets, nil
+}
+
+// getMembersCommand runs a getCommand
+func (c *Client) getMembersCommand(cmd string) ([]Member, error) {
+
+	pageSize := 1000
+	currentPage := 1
+	members := []Member{}
+
+	for {
+		cmd = fmt.Sprintf("%s?pageSize=%d&page=%d", cmd, pageSize, currentPage)
+		page := []Member{}
+
+		if err := c.restup.Get(cmd, &page); err != nil {
+			return []Member{}, err
+		}
+		if len(page) == 0 {
+			break
+		}
+		members = append(members, page...)
+		if len(page) <= pageSize {
+			break
+		}
+		currentPage++
+	}
+
+	return members, nil
+}
+
+func (c *Client) wrapExcludedBoards(condition string) string {
+	newCondition := "((" + condition + ")"
+	for _, v := range c.excludeBoards {
+		newCondition += " AND Board/ID != " + strconv.Itoa(v.ID) + ")"
+	}
+	return newCondition
+}
+
+// getTicketSourceCommand runs a getCommand
+func (c *Client) getTicketSourceCommand(cmd string) ([]TicketSource, error) {
+
+	pageSize := 1000
+	currentPage := 1
+	sources := []TicketSource{}
+
+	for {
+		cmd = fmt.Sprintf("%s?pageSize=%d&page=%d", cmd, pageSize, currentPage)
+		page := []TicketSource{}
+
+		if err := c.restup.Get(cmd, &page); err != nil {
+			return []TicketSource{}, err
+		}
+		if len(page) == 0 {
+			break
+		}
+		sources = append(sources, page...)
+		if len(page) <= pageSize {
+			break
+		}
+		currentPage++
+	}
+
+	return sources, nil
+}
+
+// getMembersCommand runs a getCommand
+func (c *Client) getAuditTrailCommand(cmd string) ([]Audit, error) {
+
+	pageSize := 1000
+	currentPage := 1
+	audit := []Audit{}
+
+	for {
+		page := []Audit{}
+
+		if err := c.restup.Get(cmd, &page); err != nil {
+			return []Audit{}, err
+		}
+		if len(page) == 0 {
+			break
+		}
+		audit = append(audit, page...)
+		if len(page) <= pageSize {
+			break
+		}
+		currentPage++
+	}
+
+	return audit, nil
 }
 
 // GetStats ...

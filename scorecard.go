@@ -5,22 +5,41 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"strconv"
-	"time"
 
 	"github.com/simononebyte/scorecard/psa"
 )
 
 type config struct {
-	Continuum     string       `json:"rmm_key"`
-	ConnectWise   psa.Config   `json:"psa_key"`
-	Excludes      psa.Excludes `json:"psa_excludes"`
-	ReactiveSites []configSite `json:"reactive_endpoints"`
+	Continuum     string         `json:"rmm_key"`
+	ConnectWise   psa.Config     `json:"psa_key"`
+	Boards        []configBoards `json:"psa_boards"`
+	Excludes      psa.Excludes   `json:"psa_excludes"`
+	ReactiveSites []configSite   `json:"reactive_endpoints"`
 }
 
 type configSite struct {
 	Name     string `json:"name"`
 	SiteCode string `json:"site_code"`
+}
+
+type configBoards struct {
+	ID        int    `json:"id"`
+	Name      string `json:"name"`
+	Worksheet string `json:"worksheet"`
+}
+
+var excludeBoards = []string{
+	"Planned Time Off",
+}
+
+type boardStats struct {
+	new         int
+	open        int
+	older7      int
+	noUpdate7   int
+	noUpdate31  int
+	assigned    int
+	notAssigned int
 }
 
 func main() {
@@ -31,170 +50,233 @@ func main() {
 		os.Exit(1)
 	}
 
-	siteCodes := make([]string, 0)
-	for _, v := range c.ReactiveSites {
-		siteCodes = append(siteCodes, string(v.SiteCode))
+	psa, err := psa.NewClient(c.ConnectWise, excludeBoards)
+	if err != nil {
+		panic(err)
 	}
 
-	excludes := make([]string, 0)
-	for _, exclude := range c.Excludes.Summary {
-		excludes = append(excludes, exclude)
+	for _, board := range c.Boards {
+		stats := getStatsforBoard(psa, board.ID)
+		fmt.Println(board.Name, " : ", stats)
 	}
-
-	psa := psa.NewClient(c.ConnectWise, siteCodes, excludes)
-
-	boards := []string{
-		"Accounts",
-		"Purchasing",
-		"SD - Reactive",
-		"SD - Reactive - Helpdesk",
-		"SD - Reactive - Phones",
-	}
-
-	printOpenTicketCounts(psa, boards)
-	printOpenTicketsOlderThanDays(psa, boards, 7)
-	printOpenTicketsOlderThanDays(psa, boards, 31)
-	printOpenAssignedTicketCounts(psa, boards)
-	printOpenNotAssignedTicketCounts(psa, boards)
-	printOpenTicketsNotUpdatedInOnBoard(psa, boards, 7)
-	printNewTicketsInLastOnBoard(psa, boards, 7)
 
 	fmt.Printf("\n\nPress Enter to close window")
+
 	bufio.NewReader(os.Stdin).ReadBytes('\n')
 }
 
-func printOpenTicketCounts(psa *psa.Client, boards []string) {
-	max := 0
-	for _, board := range boards {
-		if len(board) > max {
-			max = len(board)
-		}
-	}
-	fmtStr := " %-" + strconv.Itoa(max) + "s : %3s\n"
+func getStatsforBoard(psa *psa.Client, id int) boardStats {
+	stats := boardStats{}
 
-	fmt.Println("Open tickets by service board")
-	fmt.Println("")
-	for _, board := range boards {
-		tickets, err := psa.GetOpenTicketsOnBoard(board)
-		if err != nil {
-			fmt.Printf(fmtStr, board, "Board not found")
-			continue
-		}
-		fmt.Printf(fmtStr, board, strconv.Itoa(len(tickets)))
+	// new
+	newTickets, err := psa.GetNewTicketsByBoardID(id, 7)
+	if err != nil {
+		panic("")
 	}
-	fmt.Println("")
+	stats.new = len(newTickets)
+
+	// open
+	openTickets, err := psa.GetOpenTicketsByBoardID(id)
+	if err != nil {
+		panic("")
+	}
+	stats.open = len(openTickets)
+
+	// older7
+	older7Tickets, err := psa.GetOpenTicketsByBoardIDOlderThan(id, 7)
+	if err != nil {
+		panic("")
+	}
+	stats.older7 = len(older7Tickets)
+
+	// noUpdate7
+	noUpdate7Tickets, err := psa.GetOpenTicketsByBoardIDNotUpdatedIn(id, 31)
+	if err != nil {
+		panic("")
+	}
+	stats.noUpdate7 = len(noUpdate7Tickets)
+
+	// noUpdate31
+	noUpdate31Tickets, err := psa.GetOpenTicketsByBoardIDNotUpdatedIn(id, 31)
+	if err != nil {
+		panic("")
+	}
+	stats.noUpdate31 = len(noUpdate31Tickets)
+
+	// assigned
+	assignedTickets, err := psa.GetOpenAssignedTicketsByBoardID(id)
+	if err != nil {
+		panic("")
+	}
+	stats.assigned = len(assignedTickets)
+
+	// notAssigned
+	notAssignedTickets, err := psa.GetOpenNotAssignedTicketsByBoardID(id)
+	if err != nil {
+		panic("")
+	}
+	stats.notAssigned = len(notAssignedTickets)
+
+	return stats
 }
 
-func printOpenTicketsOlderThanDays(psa *psa.Client, boards []string, days int) {
+// func printOpenTicketByPeson(psa *psa.Client, padding int, members []string) {
+// 	fmtStr := " %-" + strconv.Itoa(padding) + "s : %3s\n"
 
-	fmt.Printf("Open tickets by service board open more than %d days\n\n", days)
+// 	fmt.Printf("Open tickets by person\n")
+// 	fmt.Printf("########################################################\n\n")
 
-	max := 0
-	for _, board := range boards {
-		if len(board) > max {
-			max = len(board)
-		}
-	}
-	fmtStr := " %-" + strconv.Itoa(max) + "s : %3s\n"
+// 	for _, member := range members {
+// 		tickets, err := psa.GetOpenOpenTicketsAssignedTo(member)
+// 		if err != nil {
+// 			fmt.Printf(fmtStr, err)
+// 			continue
+// 		}
+// 		fmt.Printf(fmtStr, member, strconv.Itoa(len(tickets)))
+// 	}
+// 	fmt.Printf("\n\n")
+// }
 
-	for _, board := range boards {
-		tickets, err := psa.GetOpenTicketsOnBoardOlderThan(board, days)
-		if err != nil {
-			fmt.Printf(fmtStr, board, "Board not found")
-			continue
-		}
-		fmt.Printf(fmtStr, board, strconv.Itoa(len(tickets)))
-	}
-	fmt.Println("")
-}
+// func printOpenTicketCounts(psa *psa.Client, padding int, boards []string) {
+// 	max := getWidest(boards)
+// 	fmtStr := " %-" + strconv.Itoa(max) + "s : %3s\n"
 
-func printOpenAssignedTicketCounts(psa *psa.Client, boards []string) {
-	max := 0
-	for _, board := range boards {
-		if len(board) > max {
-			max = len(board)
-		}
-	}
-	fmtStr := " %-" + strconv.Itoa(max) + "s : %3s\n"
+// 	fmt.Printf("Open tickets by service board\n")
+// 	fmt.Printf("########################################################\n\n")
 
-	fmt.Println("Open tickets assigned to a resource by service board")
-	fmt.Println("")
-	for _, board := range boards {
-		tickets, err := psa.GetOpenAssignedTicketsOnBoard(board)
-		if err != nil {
-			fmt.Printf(fmtStr, board, "Board not found")
-			continue
-		}
-		fmt.Printf(fmtStr, board, strconv.Itoa(len(tickets)))
-	}
-	fmt.Println("")
-}
+// 	for _, board := range boards {
+// 		tickets, err := psa.GetOpenTicketsOnBoard(board)
+// 		if err != nil {
+// 			fmt.Printf(fmtStr, board, "Board not found")
+// 			continue
+// 		}
+// 		fmt.Printf(fmtStr, board, strconv.Itoa(len(tickets)))
+// 	}
+// 	fmt.Printf("\n\n")
+// }
 
-func printOpenNotAssignedTicketCounts(psa *psa.Client, boards []string) {
-	max := 0
-	for _, board := range boards {
-		if len(board) > max {
-			max = len(board)
-		}
-	}
-	fmtStr := " %-" + strconv.Itoa(max) + "s : %3s\n"
+// func printOpenTicketsOlderThanDays(psa *psa.Client, padding int, boards []string, days int) {
 
-	fmt.Println("Open tickets not assigned to a resource by service board")
-	fmt.Println("")
-	for _, board := range boards {
-		tickets, err := psa.GetOpenNotAssignedTicketsOnBoard(board)
-		if err != nil {
-			fmt.Printf(fmtStr, board, "Board not found")
-			continue
-		}
-		fmt.Printf(fmtStr, board, strconv.Itoa(len(tickets)))
-	}
-	fmt.Println("")
-}
+// 	fmt.Printf("Open tickets by service board open more than %d days\n", days)
+// 	fmt.Printf("########################################################\n\n")
 
-func printOpenTicketsNotUpdatedInOnBoard(psa *psa.Client, boards []string, days int) {
-	max := 0
-	for _, board := range boards {
-		if len(board) > max {
-			max = len(board)
-		}
-	}
-	fmtStr := " %-" + strconv.Itoa(max) + "s : %3s\n"
+// 	max := getWidest(boards)
+// 	fmtStr := " %-" + strconv.Itoa(max) + "s : %3s\n"
 
-	fmt.Printf("Open tickets not updated in %v days by service board\n", days)
-	fmt.Println("")
-	for _, board := range boards {
-		tickets, err := psa.GetOpenTicketsNotUpdatedInOnBoard(board, days)
-		if err != nil {
-			fmt.Printf(fmtStr, board, "Board not found")
-			continue
-		}
-		fmt.Printf(fmtStr, board, strconv.Itoa(len(tickets)))
-	}
-	fmt.Println("")
-}
+// 	for _, board := range boards {
+// 		tickets, err := psa.GetOpenTicketsOnBoardOlderThan(board, days)
+// 		if err != nil {
+// 			fmt.Printf(fmtStr, board, "Board not found")
+// 			continue
+// 		}
+// 		fmt.Printf(fmtStr, board, strconv.Itoa(len(tickets)))
+// 	}
+// 	fmt.Printf("\n\n")
+// }
 
-func printNewTicketsInLastOnBoard(psa *psa.Client, boards []string, days int) {
-	max := 0
-	for _, board := range boards {
-		if len(board) > max {
-			max = len(board)
-		}
-	}
-	fmtStr := " %-" + strconv.Itoa(max) + "s : %3s\n"
+// func printOpenAssignedTicketCounts(psa *psa.Client, padding int, boards []string) {
+// 	max := getWidest(boards)
+// 	fmtStr := " %-" + strconv.Itoa(max) + "s : %3s\n"
 
-	fmt.Printf("New tickets in last %v days by service board\n", days)
-	fmt.Println("")
-	for _, board := range boards {
-		tickets, err := psa.GetNewTicketsInLastOnBoard(board, days)
-		if err != nil {
-			fmt.Printf(fmtStr, board, "Board not found")
-			continue
-		}
-		fmt.Printf(fmtStr, board, strconv.Itoa(len(tickets)))
-	}
-	fmt.Println("")
-}
+// 	fmt.Printf("Open tickets assigned to a resource by service board\n")
+// 	fmt.Printf("########################################################\n\n")
+
+// 	for _, board := range boards {
+// 		tickets, err := psa.GetOpenAssignedTicketsOnBoard(board)
+// 		if err != nil {
+// 			fmt.Printf(fmtStr, board, "Board not found")
+// 			continue
+// 		}
+// 		fmt.Printf(fmtStr, board, strconv.Itoa(len(tickets)))
+// 	}
+// 	fmt.Printf("\n\n")
+// }
+
+// func printOpenNotAssignedTicketCounts(psa *psa.Client, padding int, boards []string) {
+// 	max := getWidest(boards)
+// 	fmtStr := " %-" + strconv.Itoa(max) + "s : %3s\n"
+
+// 	fmt.Printf("Open tickets not assigned to a resource by service board\n")
+// 	fmt.Printf("########################################################\n\n")
+
+// 	for _, board := range boards {
+// 		tickets, err := psa.GetOpenNotAssignedTicketsOnBoard(board)
+// 		if err != nil {
+// 			fmt.Printf(fmtStr, board, "Board not found")
+// 			continue
+// 		}
+// 		fmt.Printf(fmtStr, board, strconv.Itoa(len(tickets)))
+// 	}
+// 	fmt.Printf("\n\n")
+// }
+
+// func printOpenTicketsNotUpdatedInOnBoard(psa *psa.Client, padding int, boards []string, days int) {
+// 	max := getWidest(boards)
+// 	fmtStr := " %-" + strconv.Itoa(max) + "s : %3s\n"
+
+// 	fmt.Printf("Open tickets not updated in %v days by service board\n", days)
+// 	fmt.Printf("########################################################\n\n")
+
+// 	for _, board := range boards {
+// 		tickets, err := psa.GetOpenTicketsNotUpdatedInOnBoard(board, days)
+// 		if err != nil {
+// 			fmt.Printf(fmtStr, board, "Board not found")
+// 			continue
+// 		}
+// 		fmt.Printf(fmtStr, board, strconv.Itoa(len(tickets)))
+// 	}
+// 	fmt.Printf("\n\n")
+// }
+
+// func printNewTicketsInLastOnBoard(psa *psa.Client, padding int, boards []string, days int) {
+// 	max := getWidest(boards)
+// 	fmtStr := " %-" + strconv.Itoa(max) + "s : %3v\n"
+
+// 	fmt.Printf("New tickets in last %v days by service board\n", days)
+// 	fmt.Printf("########################################################\n\n")
+
+// 	for _, board := range boards {
+// 		tickets, err := psa.GetNewTicketsInLastOnBoard(board, days)
+// 		if err != nil {
+// 			fmt.Printf(fmtStr, board, "Board not found")
+// 			continue
+// 		}
+// 		fmt.Printf(fmtStr, board, len(tickets))
+// 	}
+// 	fmt.Printf("\n\n")
+// }
+
+// func printEscaltedAndReferredTicketsInLast(psa *psa.Client, padding int, days int) {
+
+// 	fmtStr := " %-" + strconv.Itoa(padding) + "s : %3v\n"
+
+// 	fmt.Printf("Tickets escalated or referred in the last %v days\n", days)
+// 	fmt.Printf("########################################################\n\n")
+
+// 	if escalated, err := psa.GetEscalatedTicketsInLast(days); err != nil {
+// 		fmt.Printf(fmtStr, "Escalated", err)
+// 	} else {
+// 		fmt.Printf(fmtStr, "Escalated", len(escalated))
+// 	}
+
+// 	// if escalated, err := psa.GetEscalatedTicketsInLast(days); err != nil {
+// 	// 	fmt.Printf(fmtStr, "Escalated", err )
+// 	// } else {
+// 	// 	fmt.Printf(fmtStr, "Escalated", escalated )
+// 	// }
+
+// 	fmt.Printf("\n\n")
+// }
+
+// func getWidest(list []string) int {
+// 	max := 0
+// 	for _, v := range list {
+// 		if len(v) > max {
+// 			max = len(v)
+// 		}
+// 	}
+// 	return max
+// }
 
 // func scoreCard1() {
 
@@ -275,21 +357,21 @@ func readConfig() (config, error) {
 	return c, err
 }
 
-// getDateRange start and end dates to retrieve stats for
-func getDateRange(week int) (startDate, endDate time.Time) {
+// // getDateRange start and end dates to retrieve stats for
+// func getDateRange(week int) (startDate, endDate time.Time) {
 
-	now := time.Now()
+// 	now := time.Now()
 
-	offset := int(now.Weekday()) * -1
+// 	offset := int(now.Weekday()) * -1
 
-	if week == 0 {
-		startDate = now.AddDate(0, 0, offset+1)
-		endDate = now
-		return
-	}
+// 	if week == 0 {
+// 		startDate = now.AddDate(0, 0, offset+1)
+// 		endDate = now
+// 		return
+// 	}
 
-	end := offset - ((week - 1) * 7)
-	startDate = now.AddDate(0, 0, end-6)
-	endDate = now.AddDate(0, 0, end)
-	return
-}
+// 	end := offset - ((week - 1) * 7)
+// 	startDate = now.AddDate(0, 0, end-6)
+// 	endDate = now.AddDate(0, 0, end)
+// 	return
+// }

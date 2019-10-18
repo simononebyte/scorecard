@@ -82,10 +82,38 @@ type Member struct {
 	ID         string `json:"id"`
 	Identifier string `json:"identifier"`
 	Name       string `json:"name"`
+	Info       Info   `json:"_info"`
 }
 
 // Contact ..
 type Contact struct {
 	ID   string `json:"id"`
 	Name string `json:"name"`
+}
+
+// TicketSource indicate how a service ticket was raised
+type TicketSource struct {
+	ID          int       `json:"id"`
+	Name        string    `json:"name"`
+	Default     bool      `json:"defaultFlag"`
+	Info        Info      `json:"_info"`
+	EnteredBy   string    `json:"enteredBy"`
+	DateEntered time.Time `json:"dateEntered"`
+}
+
+// Audit ..
+type Audit struct {
+	Text         string    `json:"text"`
+	EnteredDate  time.Time `json:"enteredDate"`
+	EnteredBy    string    `json:"enteredBy"`
+	AuditType    string    `json:"auditType"`
+	AuditSubType string    `json:"auditSubType"`
+	AuditSource  string    `json:"auditSource"`
+}
+
+// Team ..
+type Team struct {
+	ID   int    `json:"id"`
+	Name string `json:"name"`
+	Info Info   `json:"_info"`
 }
