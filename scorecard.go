@@ -33,11 +33,11 @@ var excludeBoards = []string{
 }
 
 type boardStats struct {
-	new         int
 	open        int
-	older7      int
+	new         int
 	noUpdate7   int
-	noUpdate31  int
+	older7      int
+	older31     int
 	assigned    int
 	notAssigned int
 }
@@ -68,6 +68,13 @@ func main() {
 func getStatsforBoard(psa *psa.Client, id int) boardStats {
 	stats := boardStats{}
 
+	// open
+	openTickets, err := psa.GetOpenTicketsByBoardID(id)
+	if err != nil {
+		panic("")
+	}
+	stats.open = len(openTickets)
+
 	// new
 	newTickets, err := psa.GetNewTicketsByBoardID(id, 7)
 	if err != nil {
@@ -75,12 +82,12 @@ func getStatsforBoard(psa *psa.Client, id int) boardStats {
 	}
 	stats.new = len(newTickets)
 
-	// open
-	openTickets, err := psa.GetOpenTicketsByBoardID(id)
+	// noUpdate7
+	noUpdate7Tickets, err := psa.GetOpenTicketsByBoardIDNotUpdatedIn(id, 7)
 	if err != nil {
 		panic("")
 	}
-	stats.open = len(openTickets)
+	stats.noUpdate7 = len(noUpdate7Tickets)
 
 	// older7
 	older7Tickets, err := psa.GetOpenTicketsByBoardIDOlderThan(id, 7)
@@ -89,19 +96,12 @@ func getStatsforBoard(psa *psa.Client, id int) boardStats {
 	}
 	stats.older7 = len(older7Tickets)
 
-	// noUpdate7
-	noUpdate7Tickets, err := psa.GetOpenTicketsByBoardIDNotUpdatedIn(id, 31)
+	// older31
+	older31Tickets, err := psa.GetOpenTicketsByBoardIDOlderThan(id, 31)
 	if err != nil {
 		panic("")
 	}
-	stats.noUpdate7 = len(noUpdate7Tickets)
-
-	// noUpdate31
-	noUpdate31Tickets, err := psa.GetOpenTicketsByBoardIDNotUpdatedIn(id, 31)
-	if err != nil {
-		panic("")
-	}
-	stats.noUpdate31 = len(noUpdate31Tickets)
+	stats.older31 = len(older31Tickets)
 
 	// assigned
 	assignedTickets, err := psa.GetOpenAssignedTicketsByBoardID(id)

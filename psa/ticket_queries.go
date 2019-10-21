@@ -32,7 +32,7 @@ func (c *Client) GetOpenTicketsByBoardID(boardID int) ([]Ticket, error) {
 func (c *Client) GetOpenTicketsByBoardIDOlderThan(boardID int, days int) ([]Ticket, error) {
 
 	dateStr := dateStringFromDays(days)
-	conditions := newCondition("ClosedFlag = False AND dateEntered >= [%v] AND Board/ID = %v",dateStr, boardID)
+	conditions := newCondition("ClosedFlag = False AND dateEntered <= [%v] AND Board/ID = %v", dateStr, boardID)
 	return c.postTicketsCommand(ticketSearchEndpoint, conditions)
 }
 
@@ -42,7 +42,7 @@ func (c *Client) GetOpenTicketsByBoardIDOlderThan(boardID int, days int) ([]Tick
 func (c *Client) GetOpenTicketsByBoardIDNotUpdatedIn(boardID int, days int) ([]Ticket, error) {
 
 	dateStr := dateStringFromDays(days)
-	conditions := newCondition("ClosedFlag = False AND dateEntered >= [%v] AND Board/ID = %v", dateStr, boardID)
+	conditions := newCondition("ClosedFlag = False AND _info/LastUpdated <= [%v] AND Board/ID = %v", dateStr, boardID)
 	return c.postTicketsCommand(ticketSearchEndpoint, conditions)
 }
 
