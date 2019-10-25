@@ -108,33 +108,29 @@ func saveStats(c config, stats map[string]boardStats) error {
 		}
 
 		stat := stats[board.Name]
+		var row *xlsx.Row
+
 		if isLastRowToday(sheet) {
-			row := sheet.Rows[sheet.MaxRow-1]
-			if len(row.Cells) < statCount+1 {
-				for i := len(row.Cells); i < statCount+1; i++ {
-					row.AddCell()
-				}
-			}
-
-			row.Cells[1].SetValue(stat.new)
-			row.Cells[2].SetValue(stat.open)
-			row.Cells[3].SetValue(stat.noUpdate7)
-			row.Cells[4].SetValue(stat.older7)
-			row.Cells[5].SetValue(stat.older31)
-			row.Cells[6].SetValue(stat.assigned)
-			row.Cells[7].SetValue(stat.notAssigned)
-
+			row = sheet.Rows[sheet.MaxRow-1]
 		} else {
-			row := sheet.AddRow()
-			row.Cells[0].SetValue(time.Now().UTC().Truncate(24 * time.Hour))
-			row.Cells[1].SetValue(stat.new)
-			row.Cells[2].SetValue(stat.open)
-			row.Cells[3].SetValue(stat.noUpdate7)
-			row.Cells[4].SetValue(stat.older7)
-			row.Cells[5].SetValue(stat.older31)
-			row.Cells[6].SetValue(stat.assigned)
-			row.Cells[7].SetValue(stat.notAssigned)
+			row = sheet.AddRow()
 		}
+
+		if len(row.Cells) < statCount+1 {
+			for i := len(row.Cells); i < statCount+1; i++ {
+				row.AddCell()
+			}
+		}
+
+		row.Cells[0].SetValue(time.Now().UTC().Truncate(24 * time.Hour))
+		row.Cells[1].SetValue(stat.new)
+		row.Cells[2].SetValue(stat.open)
+		row.Cells[3].SetValue(stat.noUpdate7)
+		row.Cells[4].SetValue(stat.older7)
+		row.Cells[5].SetValue(stat.older31)
+		row.Cells[6].SetValue(stat.assigned)
+		row.Cells[7].SetValue(stat.notAssigned)
+
 	}
 
 	return f.Save(c.StatsFile)
