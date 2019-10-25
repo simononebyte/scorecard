@@ -5,6 +5,7 @@ go 1.12
 require (
 	github.com/simononebyte/restup v0.0.0-20190911135854-81d615f2e651
 	github.com/simononebyte/scorecard/psa v0.0.0
+	github.com/tealeg/xlsx v1.0.5
 )
 
 replace (
