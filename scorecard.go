@@ -6,6 +6,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/simononebyte/scorecard/psa"
@@ -46,6 +47,17 @@ type boardStats struct {
 	notAssigned int
 }
 
+type boardStatsMap map[string]boardStats
+
+func (m boardStatsMap) getKeys() []string {
+	i := 0
+	keys := make([]string, len(m))
+	for k := range m {
+		keys[i] = k
+	}
+	return keys
+}
+
 const statCount = 7
 
 func main() {
@@ -69,7 +81,7 @@ func main() {
 		panic(err)
 	}
 
-	stats := make(map[string]boardStats)
+	stats := boardStatsMap{}
 
 	for _, board := range c.Boards {
 		stats[board.Name] = getStatsforBoard(psa, board.ID)
@@ -83,17 +95,43 @@ func main() {
 	}
 
 	// Interactive mode
+	printStats(c, stats)
+
+}
+
+func printStats(c config, stats boardStatsMap) {
+
+	// boardWidth := maxStringLen(stats.)
 	for name, stat := range stats {
-		fmt.Println(name, " : ", stat)
+		fmt.Println(name)
+		fmt.Printf("  Open                : %3d\n", stat.open)
+		fmt.Printf("  New                 : %3d\n", stat.new)
+		fmt.Printf("  No Update in 7 days : %3d\n", stat.noUpdate7)
+		fmt.Printf("  Older 7 days        : %3d\n", stat.older7)
+		fmt.Printf("  Older 31 days       : %3d\n", stat.older31)
+		fmt.Printf("  Assigned            : %3d\n", stat.assigned)
+		fmt.Printf("  Not Assigned        : %3d\n", stat.notAssigned)
+		fmt.Println("---------------------------")
 	}
 	fmt.Printf("\n\nPress Enter to close window")
 	bufio.NewReader(os.Stdin).ReadBytes('\n')
 }
 
+func rightPadString(s string, w int) string {
+	fStr := "%" + strconv.Itoa(w) + "s"
+	return fmt.Sprintf(fStr, s)
+}
+
+func leftPadString(s string, w int) string {
+	fStr := "%-" + strconv.Itoa(w) + "s"
+	return fmt.Sprintf(fStr, s)
+}
+
 func isBatch(flag *bool) bool {
 	return flag != nil && *flag == true
 }
-func saveStats(c config, stats map[string]boardStats) error {
+
+func saveStats(c config, stats boardStatsMap) error {
 
 	// open excel file
 	f, err := xlsx.OpenFile(c.StatsFile)
@@ -123,8 +161,8 @@ func saveStats(c config, stats map[string]boardStats) error {
 		}
 
 		row.Cells[0].SetValue(time.Now().UTC().Truncate(24 * time.Hour))
-		row.Cells[1].SetValue(stat.new)
-		row.Cells[2].SetValue(stat.open)
+		row.Cells[1].SetValue(stat.open)
+		row.Cells[2].SetValue(stat.new)
 		row.Cells[3].SetValue(stat.noUpdate7)
 		row.Cells[4].SetValue(stat.older7)
 		row.Cells[5].SetValue(stat.older31)
@@ -151,15 +189,10 @@ func getSheet(file *xlsx.File, name string) *xlsx.Sheet {
 	}
 	return nil
 }
+
 func getDDMMYYYYString(date time.Time) string {
 	return fmt.Sprintf("%d//%d//%d", date.Day(), date.Month(), date.Year())
 }
-
-// func dateStringFromDays(days int) string {
-// 	if days > 0 {
-// 		days = days * -1
-// 	}
-// }
 
 func getStatsforBoard(psa *psa.Client, id int) boardStats {
 	stats := boardStats{}
@@ -236,4 +269,15 @@ func readConfig() (config, error) {
 	err := d.Decode(&c)
 
 	return c, err
+}
+
+func getMaxStringLen(list []string) int {
+
+	max := 0
+	for _, v := range list {
+		if len(v) > max {
+			max = len(v)
+		}
+	}
+	return max
 }
